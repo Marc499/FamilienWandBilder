@@ -342,6 +342,9 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
   <div id="gallery"></div>
 </div>
 
+<!-- Musik-Element -->
+<audio id="bach-audio" loop preload="none" style="display:none"></audio>
+
 <!-- Dia-Show -->
 <div id="show-overlay">
   <div id="show-progress"></div>
@@ -822,91 +825,58 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── Bach Präludium C-Dur (BWV 846) – Web Audio ────────────────────────────────
-let bachAC   = null;
-let bachSch  = null;
-let bachStep = 0;
-let bachT0   = 0;
-let soundOn  = true;
+// ── Musik (echte Bach-Aufnahmen, Public Domain via Wikimedia) ─────────────────
+let soundOn   = true;
+let fadeTimer = null;
 
-const BNOTE = 0.175; // Sechzehntel bei ca. 85 BPM
-const BVOL  = 0.065;
-
-// Frequenzen
-const nf = {
-  G2:98.00, B2:123.47,
-  C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
-  C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
-  C5:523.25, D5:587.33, E5:659.26, F5:698.46, G5:783.99, A5:880.00
-};
-
-// Bach Präludium in C-Dur – erste 8 Takte, je Akkord [Bass, T1, T2, T3, T4]
-const BCHORDS = [
-  [nf.C3, nf.E4, nf.G4, nf.C5, nf.E5],  // C
-  [nf.C3, nf.D4, nf.A4, nf.D5, nf.F5],  // Dm7
-  [nf.B2, nf.D4, nf.G4, nf.D5, nf.F5],  // G7/B
-  [nf.C3, nf.E4, nf.G4, nf.C5, nf.E5],  // C
-  [nf.C3, nf.E4, nf.A4, nf.E5, nf.A5],  // Am
-  [nf.C3, nf.D4, nf.F4, nf.A4, nf.D5],  // Dm
-  [nf.G2, nf.D4, nf.G4, nf.B4, nf.F5],  // G7
-  [nf.C3, nf.E4, nf.G4, nf.C5, nf.E5],  // C
+// Playlist: je Titel [URL, Anzeigename]
+const MUSIC_LIST = [
+  ['https://upload.wikimedia.org/wikipedia/commons/f/f1/Johann_Sebastian_Bach_-_English_Suite_No._3_in_G_minor_-_Gigue.ogg',
+   'Bach – Englische Suite Nr. 3, Gigue'],
+  ['https://upload.wikimedia.org/wikipedia/commons/a/a9/Bach_Sinfonien01.ogg',
+   'Bach – Sinfonia Nr. 1 C-Dur (BWV 787)'],
 ];
-// Arpeggierungsmuster pro Akkord: aufwärts-abwärts wie bei Bach
-const BPAT = [0,1,2,3,4,3,4,3,2,1,2,1,2,3,4,3]; // 16 Töne pro Akkord
-const BTOT = BCHORDS.length * BPAT.length;
+let musicIdx = 0;
 
-function playBachNote(freq, when, dur) {
-  if (!bachAC) return;
-  const gain = bachAC.createGain();
-  gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(BVOL, when + 0.018);
-  gain.gain.setValueAtTime(BVOL, when + dur * 0.65);
-  gain.gain.linearRampToValueAtTime(0, when + dur);
-
-  // Zwei Sinus-Oszillatoren (Grundton + Oktave leise) = orgel-ähnlich
-  [1, 2].forEach((mult, i) => {
-    const osc = bachAC.createOscillator();
-    const og  = bachAC.createGain();
-    og.gain.value = i === 0 ? 1 : 0.28;
-    osc.type = 'sine';
-    osc.frequency.value = freq * mult;
-    osc.connect(og); og.connect(gain);
-    osc.start(when); osc.stop(when + dur + 0.02);
-  });
-  gain.connect(bachAC.destination);
-}
-
-function bachSchedule() {
-  const AHEAD = 0.25;
-  while (bachT0 < bachAC.currentTime + AHEAD) {
-    const si   = bachStep % BTOT;
-    const ci   = Math.floor(si / BPAT.length);
-    const pi   = si % BPAT.length;
-    playBachNote(BCHORDS[ci][BPAT[pi]], bachT0, BNOTE * 0.88);
-    bachT0 += BNOTE;
-    bachStep++;
-  }
-  bachSch = setTimeout(bachSchedule, 90);
-}
+function getAudio() { return document.getElementById('bach-audio'); }
 
 function startBach() {
-  if (!window.AudioContext && !window.webkitAudioContext) return;
-  stopBach();
-  bachAC   = new (window.AudioContext || window.webkitAudioContext)();
-  bachStep = 0;
-  bachT0   = bachAC.currentTime + 0.15;
-  bachSchedule();
+  const a = getAudio();
+  const [url, title] = MUSIC_LIST[musicIdx];
+  if (a.src !== url) { a.src = url; }
+  a.volume = 0;
+  document.getElementById('show-title').textContent = '🎵 ' + title;
+  a.play().then(() => fadeVolume(a, 0, 0.55, 2000)).catch(() => {});
 }
 
-function stopBach() {
-  clearTimeout(bachSch);
-  if (bachAC) { try { bachAC.close(); } catch(e){} bachAC = null; }
+function stopBach(instant) {
+  clearTimeout(fadeTimer);
+  const a = getAudio();
+  if (instant) { a.pause(); a.currentTime = 0; return; }
+  fadeVolume(a, a.volume, 0, 1200, () => { a.pause(); a.currentTime = 0; });
+}
+
+function fadeVolume(a, from, to, ms, done) {
+  clearTimeout(fadeTimer);
+  const steps = 30;
+  const dt    = ms / steps;
+  const dv    = (to - from) / steps;
+  let   v     = from;
+  let   n     = 0;
+  function tick() {
+    v = Math.min(1, Math.max(0, v + dv));
+    a.volume = v;
+    n++;
+    if (n < steps) fadeTimer = setTimeout(tick, dt);
+    else if (done)  done();
+  }
+  tick();
 }
 
 function toggleSound() {
   soundOn = !soundOn;
   document.getElementById('show-sound-btn').textContent = soundOn ? '🔊 Ton' : '🔇 Ton';
-  if (soundOn) startBach(); else stopBach();
+  if (soundOn) startBach(); else stopBach(false);
 }
 
 // ── Dia-Show ──────────────────────────────────────────────────────────────────
