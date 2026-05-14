@@ -343,7 +343,7 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
 </div>
 
 <!-- Musik-Element -->
-<audio id="bach-audio" loop preload="none" style="display:none"></audio>
+<audio id="bach-audio" preload="none" style="display:none"></audio>
 
 <!-- Dia-Show -->
 <div id="show-overlay">
@@ -829,12 +829,12 @@ document.addEventListener('keydown', e => {
 let soundOn   = true;
 let fadeTimer = null;
 
-// Playlist: je Titel [URL, Anzeigename]
+// Playlist: je Titel [Datei, Anzeigename]  (CC0 – Open Lo-Fi, github.com/btahir/open-lofi)
 const MUSIC_LIST = [
-  ['https://upload.wikimedia.org/wikipedia/commons/f/f1/Johann_Sebastian_Bach_-_English_Suite_No._3_in_G_minor_-_Gigue.ogg',
-   'Bach – Englische Suite Nr. 3, Gigue'],
-  ['https://upload.wikimedia.org/wikipedia/commons/a/a9/Bach_Sinfonien01.ogg',
-   'Bach – Sinfonia Nr. 1 C-Dur (BWV 787)'],
+  ['music/old-photos-new-heart.mp3',      'Old Photos, New Heart'],
+  ['music/polaroids-in-a-shoebox.mp3',    'Polaroids in a Shoebox'],
+  ['music/sunday-light-through-lace.mp3', 'Sunday Light Through Lace'],
+  ['music/fireplace-loop.mp3',            'Fireplace Loop'],
 ];
 let musicIdx = 0;
 
@@ -843,11 +843,18 @@ function getAudio() { return document.getElementById('bach-audio'); }
 function startBach() {
   const a = getAudio();
   const [url, title] = MUSIC_LIST[musicIdx];
-  if (a.src !== url) { a.src = url; }
+  a.src = url;
   a.volume = 0;
   document.getElementById('show-title').textContent = '🎵 ' + title;
   a.play().then(() => fadeVolume(a, 0, 0.55, 2000)).catch(() => {});
 }
+
+// Nächsten Track abspielen wenn aktueller endet
+document.getElementById('bach-audio').addEventListener('ended', () => {
+  if (!soundOn) return;
+  musicIdx = (musicIdx + 1) % MUSIC_LIST.length;
+  startBach();
+});
 
 function stopBach(instant) {
   clearTimeout(fadeTimer);
