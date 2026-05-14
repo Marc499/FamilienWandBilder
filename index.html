@@ -208,11 +208,6 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
   <span id="load-msg">Lade Fotos …</span>
 </div>
 
-<!-- Kein-Token-Hinweis -->
-<div id="no-token">
-  <h3>⚠️ Kein Zugriffstoken in der URL</h3>
-  <p style="margin-top:8px">Bitte die vollständige URL verwenden (mit <code>?t=…</code>).</p>
-</div>
 
 <!-- Haupt-App -->
 <div id="app" style="display:none">
@@ -278,6 +273,10 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
 const REPO     = 'Marc499/FamilienWandBilder';
 const API      = 'https://api.github.com/repos/' + REPO + '/contents/';
 const PW_HASH  = '162dd37eb535589bd7f7ae18de2c6dbefb3a484f68b9f544e5f561488a6ced03';
+// Token ist mit dem Passwort verschlüsselt (PBKDF2 + AES-CBC) – kein Klartext im Quellcode
+const ENC_SALT = '7KnG+kfcZAWiAAwVG8dMuQ==';
+const ENC_IV   = '/FTFz35CIMEhFAZ7d/Pi3A==';
+const ENC_TOK  = 'qu5PmgnwS8YZrsydpGdF8cLAdCuPFU0SYeBGT8wsHqwxhGFjzYhEA1FVKZCWyJEN';
 const SIBLINGS = ['RA','AN','AM','IN'];
 const SIB_CLR  = { RA:'#c0392b', AN:'#8e44ad', AM:'#16a085', IN:'#d35400' };
 const PREFS    = [
@@ -309,33 +308,46 @@ document.getElementById('pw-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') submitPw();
 });
 
+async function decryptToken(password) {
+  function b64toBytes(b64) {
+    const bin = atob(b64);
+    return Uint8Array.from(bin, c => c.charCodeAt(0));
+  }
+  const keyMat = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const aesKey = await crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt:b64toBytes(ENC_SALT), iterations:100000, hash:'SHA-256' },
+    keyMat, { name:'AES-CBC', length:256 }, false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt(
+    { name:'AES-CBC', iv:b64toBytes(ENC_IV) }, aesKey, b64toBytes(ENC_TOK));
+  return new TextDecoder().decode(plain);
+}
+
 async function submitPw() {
   const val = document.getElementById('pw-input').value;
   const h   = await hashPw(val);
-  if (h === PW_HASH) {
-    sessionStorage.setItem('pw_ok', '1');
-    document.getElementById('pw-overlay').style.display = 'none';
-    initApp();
-  } else {
+  if (h !== PW_HASH) {
     document.getElementById('pw-error').style.display = '';
     document.getElementById('pw-input').select();
+    return;
   }
+  ghToken = await decryptToken(val);
+  sessionStorage.setItem('pw_ok', '1');
+  sessionStorage.setItem('gh_tok', ghToken);
+  document.getElementById('pw-overlay').style.display = 'none';
+  initApp();
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('pw_ok') === '1') {
+    ghToken = sessionStorage.getItem('gh_tok') || '';
     document.getElementById('pw-overlay').style.display = 'none';
     initApp();
   }
 });
 
 async function initApp() {
-  ghToken = new URLSearchParams(location.search).get('t') || '';
-  if (!ghToken) {
-    document.getElementById('no-token').style.display = '';
-    return;
-  }
   document.getElementById('app').style.display = '';
   document.getElementById('load-overlay').style.display = 'flex';
   setLoadMsg('Lade Fotoliste …');
