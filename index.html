@@ -187,6 +187,46 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
 
 .empty        { padding: 50px; text-align: center; color: #aaa; width: 100%; font-size: 1.05em; }
 .section-label { width: 100%; font-size: 0.82em; font-weight: bold; color: #888; padding: 6px 4px 2px; border-bottom: 1px solid #ddd; margin-bottom: 4px; }
+
+/* ── Notizen ── */
+.notes-wrap { padding: 0 5px 6px; }
+.notes-ta {
+  width: 100%; min-height: 38px; max-height: 90px;
+  font-size: 0.7em; border: 1px solid #e0e0e0; border-radius: 4px;
+  padding: 4px 6px; resize: vertical; font-family: Arial, sans-serif;
+  color: #555; background: #fafafa; line-height: 1.4;
+}
+.sz-mittel .notes-ta { font-size: 0.78em; min-height: 46px; }
+.notes-ta:focus { outline: none; border-color: #3498db; background: white; }
+.notes-ta::placeholder { color: #ccc; font-style: italic; }
+
+/* ── Hilfe-Button ── */
+.help-btn {
+  padding: 3px 11px; border: 2px solid rgba(255,255,255,0.35);
+  border-radius: 50%; cursor: pointer; font-size: 0.95em; font-weight: bold;
+  background: rgba(255,255,255,0.1); color: white; line-height: 1.4;
+}
+.help-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Hilfe-Modal ── */
+#help-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.72); z-index: 300;
+  align-items: center; justify-content: center;
+}
+#help-modal.open { display: flex; }
+#help-box {
+  background: white; border-radius: 10px; padding: 22px 26px;
+  max-width: 480px; width: 92%; max-height: 86vh; overflow-y: auto;
+}
+#help-box h2 { font-size: 1.1em; color: #2c3e50; margin-bottom: 14px; }
+.h-section { margin-bottom: 14px; }
+.h-section h3 { font-size: 0.88em; color: #2c3e50; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+.h-section p, .h-section li { font-size: 0.82em; color: #555; line-height: 1.5; margin-bottom: 3px; }
+.h-section ul { padding-left: 16px; }
+.h-pill { display:inline-block; padding:1px 7px; border-radius:10px; font-weight:bold; color:white; font-size:0.85em; }
+#help-close { float: right; cursor: pointer; font-size: 1.5em; line-height: 1; color: #aaa; margin-left: 8px; }
+#help-close:hover { color: #333; }
 </style>
 </head>
 <body>
@@ -219,6 +259,7 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
       <button class="sbtn active" id="btn-klein"  onclick="setSize('klein')">Klein</button>
       <button class="sbtn"        id="btn-mittel" onclick="setSize('mittel')">Mittel</button>
     </div>
+    <button class="sbtn help-btn" onclick="openHelp()">?</button>
   </div>
 
   <div id="progress">
@@ -255,6 +296,55 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
   </div>
 
   <div id="gallery"></div>
+</div>
+
+<!-- Hilfe-Modal -->
+<div id="help-modal">
+  <div id="help-box">
+    <span id="help-close" onclick="closeHelp()">✕</span>
+    <h2>🖼️ Hilfe – Bilderverteilung</h2>
+
+    <div class="h-section">
+      <h3>Präferenzen vergeben</h3>
+      <ul>
+        <li><span class="h-pill" style="background:#27ae60">★★</span> <b>Sehr gerne</b> – ich möchte dieses Bild unbedingt</li>
+        <li><span class="h-pill" style="background:#2980b9">★</span> <b>Gerne</b> – ich hätte das Bild gerne</li>
+        <li><span class="h-pill" style="background:#e67e22">?</span> <b>Wenn frei</b> – nur wenn kein anderer es will</li>
+      </ul>
+      <p style="margin-top:6px">Nochmals klicken hebt die Auswahl wieder auf.</p>
+    </div>
+
+    <div class="h-section">
+      <h3>Statusanzeige (farbiger Rand)</h3>
+      <ul>
+        <li><b style="color:#27ae60">Grün</b> – genau eine Person will das Bild (vergeben)</li>
+        <li><b style="color:#e74c3c">Rot</b> – mehrere Personen wollen dasselbe Bild (Interesse &gt; 1)</li>
+        <li>Kein Rand – noch frei, niemand hat Interesse markiert</li>
+      </ul>
+    </div>
+
+    <div class="h-section">
+      <h3>Interesse &gt; 1 – Konflikte klären</h3>
+      <p>Wenn mehrere das gleiche Bild wollen, erscheint es rot markiert. Im Filter <b>Interesse&gt;1</b> werden alle solche Bilder gebündelt angezeigt. Dort kann jeder auf <b>„Ich gebe nach 🤝"</b> klicken – die eigene Präferenz wird damit entfernt.</p>
+    </div>
+
+    <div class="h-section">
+      <h3>Notizen je Bild</h3>
+      <p>Unter jedem Bild gibt es ein Notizfeld, das alle gemeinsam nutzen können – z. B. für Absprachen, Maße oder Erinnerungen. Die Notiz wird automatisch gespeichert.</p>
+    </div>
+
+    <div class="h-section">
+      <h3>Live-Synchronisation</h3>
+      <p>Alle Änderungen werden auf GitHub gespeichert. Alle 25 Sekunden wird automatisch aktualisiert, sodass Änderungen anderer Geschwister sichtbar werden. Mit <b>↺ Aktualisieren</b> kann auch manuell neu geladen werden.</p>
+    </div>
+
+    <div class="h-section">
+      <h3>Bild vergrößern</h3>
+      <p>Einfach auf das Thumbnail klicken – es öffnet sich eine Vollbildansicht. Mit <b>Escape</b> oder Klick außerhalb schließen.</p>
+    </div>
+
+    <button onclick="closeHelp()" style="margin-top:8px;padding:8px 20px;background:#2c3e50;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.88em">Schließen</button>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -581,6 +671,7 @@ function standardCard(name, idx) {
     ${statusHtml}
     <div class="cname" title="${escH(name)}">${escH(short)}</div>
     <div class="prefs">${rows}</div>
+    ${noteHtml(name, idx)}
   </div>`;
 }
 
@@ -617,6 +708,7 @@ function conflictCard(name, idx) {
       <summary>Präferenzen anpassen …</summary>
       <div class="prefs" style="padding-top:6px">${allRows}</div>
     </details>
+    ${noteHtml(name, idx)}
   </div>`;
 }
 
@@ -638,6 +730,32 @@ function setSize(s) {
   render();
 }
 
+// ── Notizen ──────────────────────────────────────────────────────────────────
+function getNote(name)      { return (prefs[name] || {})._note || ''; }
+function noteHtml(name, idx) {
+  const val = escH(getNote(name));
+  return `<div class="notes-wrap">
+    <textarea class="notes-ta" placeholder="Notizen …"
+      onchange="setNote(${idx}, this.value)"
+      oninput="setNote(${idx}, this.value)">${val}</textarea>
+  </div>`;
+}
+
+let noteTimer = null;
+function setNote(idx, val) {
+  const name = PHOTOS[idx];
+  if (!prefs[name]) prefs[name] = {};
+  if (val.trim() === '') { delete prefs[name]._note; if (!Object.keys(prefs[name]).length) delete prefs[name]; }
+  else prefs[name]._note = val;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => doSave(), 600);
+}
+
+// ── Hilfe ─────────────────────────────────────────────────────────────────────
+function openHelp()  { document.getElementById('help-modal').classList.add('open'); }
+function closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeHelp(); } });
+
 // ── Modal ─────────────────────────────────────────────────────────────────────
 function openModal(idx) {
   document.getElementById('mimg').src = 'FamilienBilder/' + encodeURIComponent(PHOTOS[idx]);
@@ -651,7 +769,6 @@ function closeModal() {
 document.getElementById('modal').addEventListener('click', e => {
   if (e.target === document.getElementById('modal')) closeModal();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 </body>
 </html>
