@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilderverteilung Familie Isenberg</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
+
+/* ── Passwort-Overlay ── */
+#pw-overlay {
+  position: fixed; inset: 0; background: #2c3e50;
+  display: flex; align-items: center; justify-content: center; z-index: 999;
+}
+#pw-box {
+  background: white; border-radius: 12px; padding: 36px 40px;
+  width: 340px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+#pw-box h2 { font-size: 1.2em; color: #2c3e50; margin-bottom: 8px; }
+#pw-box p  { font-size: 0.85em; color: #777; margin-bottom: 18px; }
+#pw-input {
+  width: 100%; padding: 10px 14px; font-size: 1em;
+  border: 2px solid #ddd; border-radius: 6px; margin-bottom: 12px; outline: none;
+}
+#pw-input:focus { border-color: #3498db; }
+#pw-submit {
+  width: 100%; padding: 10px; background: #2c3e50; color: white;
+  border: none; border-radius: 6px; font-size: 1em; cursor: pointer;
+}
+#pw-submit:hover { background: #34495e; }
+#pw-error { color: #e74c3c; font-size: 0.85em; margin-top: 10px; display: none; }
+
+/* ── Lade-Overlay ── */
+#load-overlay {
+  position: fixed; inset: 0; background: rgba(236,240,241,0.92);
+  display: flex; align-items: center; justify-content: center; z-index: 500;
+  font-size: 1.1em; color: #555; flex-direction: column; gap: 12px;
+}
+.spinner {
+  width: 36px; height: 36px; border: 4px solid #ddd;
+  border-top-color: #3498db; border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Kein-Token-Hinweis ── */
+#no-token {
+  display: none; padding: 60px 20px; text-align: center; color: #888; font-size: 1em;
+}
+
+/* ── Header ── */
+#header { background: #2c3e50; color: white; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#header h1 { font-size: 1.2em; flex-shrink: 0; }
+#save-status { font-size: 0.8em; padding: 3px 10px; border-radius: 12px; transition: all 0.3s; }
+.ss-saving  { background: rgba(243,156,18,0.3);  color: #f39c12; }
+.ss-ok      { background: rgba(46,204,113,0.3);  color: #2ecc71; }
+.ss-err     { background: rgba(231,76,60,0.3);   color: #e74c3c; }
+.ss-update  { background: rgba(52,152,219,0.3);  color: #3498db; }
+#size-btns { display: flex; gap: 6px; margin-left: auto; }
+.sbtn {
+  padding: 4px 13px; border: 2px solid rgba(255,255,255,0.35);
+  border-radius: 5px; cursor: pointer; font-size: 0.82em;
+  background: rgba(255,255,255,0.1); color: white; transition: all 0.15s;
+}
+.sbtn:hover  { background: rgba(255,255,255,0.22); }
+.sbtn.active { background: rgba(255,255,255,0.3); border-color: white; }
+
+/* ── Fortschritt ── */
+#progress { background: #34495e; padding: 7px 16px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.stat-chip { display: flex; align-items: center; gap: 5px; font-size: 0.82em; color: #ddd; }
+.stat-num { font-size: 1.15em; font-weight: bold; }
+.col-ok   { color: #2ecc71; }
+.col-conf { color: #e74c3c; }
+.col-frei { color: #95a5a6; }
+
+/* ── Filterleiste ── */
+#filter-bar { background: #3d566e; padding: 7px 16px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#filter-bar > span { color: #aaa; font-size: 0.78em; margin-right: 3px; }
+.fb {
+  padding: 4px 14px; border: 2px solid transparent;
+  border-radius: 18px; cursor: pointer; font-size: 0.8em; font-weight: bold;
+  color: white; transition: all 0.18s; position: relative;
+}
+.fb:hover { filter: brightness(1.2); }
+.fb.active { border-color: white; box-shadow: 0 0 0 1px white; }
+.fb-alle  { background: #555; }
+.fb-RA    { background: #c0392b; }
+.fb-AN    { background: #8e44ad; }
+.fb-AM    { background: #16a085; }
+.fb-IN    { background: #d35400; }
+.fb-konfl { background: #c0392b; }
+.fb-frei  { background: #7f8c8d; }
+.badge {
+  position: absolute; top: -6px; right: -6px;
+  background: #f39c12; color: white; font-size: 0.7em;
+  border-radius: 10px; padding: 1px 5px; min-width: 18px; text-align: center;
+}
+
+/* ── Legende ── */
+#legende {
+  background: #ecf0f1; border-bottom: 1px solid #ddd;
+  padding: 5px 16px; display: flex; gap: 12px; flex-wrap: wrap;
+  align-items: center; font-size: 0.74em; color: #666;
+}
+.leg  { display: flex; align-items: center; gap: 4px; }
+.ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.lpill { padding: 1px 7px; border-radius: 10px; font-weight: bold; color: white; font-size: 0.9em; }
+
+/* ── Galerie ── */
+#gallery { padding: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+
+/* ── Karte ── */
+.card {
+  background: white; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: transform 0.15s, box-shadow 0.15s; border: 2px solid transparent;
+}
+.card:hover       { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
+.card.is-conflict { border-color: #e74c3c; }
+.card.is-vergeben { border-color: #27ae60; }
+
+.sz-klein  .card:not(.conflict-card) { width: 128px; }
+.sz-mittel .card:not(.conflict-card) { width: 377px; }
+.sz-klein  .thumb-wrap:not(.conflict-thumb) { width: 128px; height: 96px; }
+.sz-mittel .thumb-wrap:not(.conflict-thumb) { width: 377px; height: 283px; }
+
+.thumb-wrap {
+  cursor: pointer; overflow: hidden; background: #ccc;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.thumb-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+
+.status-bar { font-size: 0.65em; font-weight: bold; padding: 2px 6px; display: flex; align-items: center; gap: 4px; }
+.status-frei     { background: #f0f0f0; color: #999; }
+.status-vergeben { background: #eafaf1; color: #27ae60; }
+.status-konflikt { background: #fdecea; color: #c0392b; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+.cname { font-size: 0.65em; color: #777; padding: 2px 6px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sz-klein  .cname { max-width: 128px; }
+.sz-mittel .cname { max-width: 377px; }
+
+.prefs { padding: 2px 5px 5px; }
+.prow  { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
+.slbl  { font-size: 0.63em; font-weight: bold; width: 22px; text-align: center; border-radius: 3px; padding: 2px 1px; flex-shrink: 0; color: white; }
+.s-RA { background: #c0392b; }
+.s-AN { background: #8e44ad; }
+.s-AM { background: #16a085; }
+.s-IN { background: #d35400; }
+
+.pb {
+  flex: 1; padding: 2px 1px; font-size: 0.62em;
+  border: 1px solid #ddd; border-radius: 3px; cursor: pointer;
+  background: #f8f8f8; color: #555; text-align: center; line-height: 1.5;
+  transition: all 0.1s; white-space: nowrap;
+}
+.sz-mittel .pb { font-size: 0.72em; padding: 3px 2px; }
+.pb:hover { filter: brightness(0.87); }
+.pb.sel { color: white; border-color: transparent; font-weight: bold; }
+.pb[data-v="sg"].sel { background: #27ae60; }
+.pb[data-v="g"].sel  { background: #2980b9; }
+.pb[data-v="wk"].sel { background: #e67e22; }
+
+/* ── Konflikt-Karte ── */
+.conflict-card { width: 100%; max-width: 500px; border-color: #e74c3c !important; background: #fffafa; }
+.conflict-thumb { width: 100%; height: 220px; }
+.conflict-header { background: #e74c3c; color: white; padding: 7px 12px; font-size: 0.9em; font-weight: bold; }
+.conflict-wanters { padding: 8px 12px 4px; }
+.wanter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 5px 8px; background: #f8f8f8; border-radius: 5px; border-left: 4px solid var(--sc); }
+.wanter-name { font-weight: bold; font-size: 0.85em; color: var(--sc); flex-shrink: 0; }
+.wanter-pref { font-size: 0.8em; color: #555; flex: 1; }
+.nachgeben-btn { padding: 5px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8em; font-weight: bold; background: var(--sc); color: white; transition: filter 0.15s; flex-shrink: 0; }
+.nachgeben-btn:hover { filter: brightness(0.85); }
+.conflict-prefs { padding: 4px 10px 8px; border-top: 1px solid #f0e0e0; margin-top: 4px; }
+.conflict-prefs summary { font-size: 0.75em; color: #888; cursor: pointer; padding: 4px 0; }
+
+/* ── Modal ── */
+#modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.84); z-index: 200; align-items: center; justify-content: center; }
+#modal.open { display: flex; }
+#mbox { background: white; border-radius: 10px; padding: 14px; max-width: 90vw; max-height: 92vh; display: flex; flex-direction: column; gap: 8px; }
+#mhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+#mname { font-size: 0.85em; color: #555; }
+#mclose { cursor: pointer; font-size: 1.7em; line-height: 1; color: #888; flex-shrink: 0; }
+#mclose:hover { color: #333; }
+#mimg { max-width: 74vw; max-height: 72vh; display: block; border-radius: 4px; }
+
+.empty        { padding: 50px; text-align: center; color: #aaa; width: 100%; font-size: 1.05em; }
+.section-label { width: 100%; font-size: 0.82em; font-weight: bold; color: #888; padding: 6px 4px 2px; border-bottom: 1px solid #ddd; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Passwort-Overlay -->
+<div id="pw-overlay">
+  <div id="pw-box">
+    <h2>🖼️ Familie Isenberg</h2>
+    <p>Bilderverteilung – bitte Passwort eingeben</p>
+    <input type="password" id="pw-input" placeholder="Passwort" autocomplete="current-password">
+    <button id="pw-submit" onclick="submitPw()">Weiter →</button>
+    <div id="pw-error">Falsches Passwort</div>
+  </div>
+</div>
+
+<!-- Lade-Overlay -->
+<div id="load-overlay" style="display:none">
+  <div class="spinner"></div>
+  <span id="load-msg">Lade Fotos …</span>
+</div>
+
+<!-- Kein-Token-Hinweis -->
+<div id="no-token">
+  <h3>⚠️ Kein Zugriffstoken in der URL</h3>
+  <p style="margin-top:8px">Bitte die vollständige URL verwenden (mit <code>?t=…</code>).</p>
+</div>
+
+<!-- Haupt-App -->
+<div id="app" style="display:none">
+
+  <div id="header">
+    <h1>🖼️ Bilderverteilung Familie Isenberg</h1>
+    <span id="save-status"></span>
+    <div id="size-btns">
+      <button class="sbtn active" id="btn-klein"  onclick="setSize('klein')">Klein</button>
+      <button class="sbtn"        id="btn-mittel" onclick="setSize('mittel')">Mittel</button>
+    </div>
+  </div>
+
+  <div id="progress">
+    <div class="stat-chip"><span class="stat-num" id="st-total">0</span><span>Bilder</span></div>
+    <div class="stat-chip"><span class="stat-num col-ok"   id="st-verg">0</span><span>vergeben</span></div>
+    <div class="stat-chip"><span class="stat-num col-conf" id="st-konf">0</span><span>Interesse&gt;1</span></div>
+    <div class="stat-chip"><span class="stat-num col-frei" id="st-frei">0</span><span>noch frei</span></div>
+    <button onclick="reloadPrefs()" style="margin-left:auto;padding:3px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:4px;background:transparent;color:#aaa;cursor:pointer;font-size:0.78em">↺ Aktualisieren</button>
+  </div>
+
+  <div id="filter-bar">
+    <span>Ansicht:</span>
+    <button class="fb fb-alle  active" onclick="setFilter('alle')">Alle</button>
+    <button class="fb fb-konfl"       onclick="setFilter('konflikte')" id="btn-konf">
+      ⚠️ Interesse&gt;1
+      <span class="badge" id="konf-badge" style="display:none">0</span>
+    </button>
+    <button class="fb fb-RA"  onclick="setFilter('RA')">RA</button>
+    <button class="fb fb-AN"  onclick="setFilter('AN')">AN</button>
+    <button class="fb fb-AM"  onclick="setFilter('AM')">AM</button>
+    <button class="fb fb-IN"  onclick="setFilter('IN')">IN</button>
+    <button class="fb fb-frei" onclick="setFilter('frei')">Noch frei</button>
+  </div>
+
+  <div id="legende">
+    <strong>Präferenzen:</strong>
+    <span class="leg"><span class="lpill" style="background:#27ae60">★★</span> Sehr gerne</span>
+    <span class="leg"><span class="lpill" style="background:#2980b9">★</span> Gerne</span>
+    <span class="leg"><span class="lpill" style="background:#e67e22">?</span> Wenn frei</span>
+    <span style="color:#bbb">|</span>
+    <span class="leg"><span class="ldot" style="background:#27ae60"></span> vergeben</span>
+    <span class="leg"><span class="ldot" style="background:#e74c3c"></span> Interesse&gt;1</span>
+    <span style="color:#bbb">· Thumbnail klicken = vergrößern · nochmal klicken = aufheben</span>
+  </div>
+
+  <div id="gallery"></div>
+</div>
+
+<!-- Modal -->
+<div id="modal">
+  <div id="mbox">
+    <div id="mhead">
+      <div id="mname"></div>
+      <span id="mclose" onclick="closeModal()">✕</span>
+    </div>
+    <img id="mimg" src="" alt="">
+  </div>
+</div>
+
+<script>
+// ── Konstanten ──────────────────────────────────────────────────────────────
+const REPO     = 'Marc499/FamilienWandBilder';
+const API      = 'https://api.github.com/repos/' + REPO + '/contents/';
+const PW_HASH  = '162dd37eb535589bd7f7ae18de2c6dbefb3a484f68b9f544e5f561488a6ced03';
+const SIBLINGS = ['RA','AN','AM','IN'];
+const SIB_CLR  = { RA:'#c0392b', AN:'#8e44ad', AM:'#16a085', IN:'#d35400' };
+const PREFS    = [
+  { v:'sg', icon:'★★', title:'Sehr gerne' },
+  { v:'g',  icon:'★',  title:'Gerne' },
+  { v:'wk', icon:'?',  title:'Wenn es keiner will' },
+];
+const PREF_TITLE = { sg:'Sehr gerne', g:'Gerne', wk:'Wenn keiner will' };
+const WANTED     = new Set(['sg','g']);
+
+// ── Zustand ─────────────────────────────────────────────────────────────────
+let ghToken    = '';
+let PHOTOS     = [];
+let prefs      = {};   // { "name.jpg": { "RA": "sg", ... } }
+let prefsSha   = '';
+let curFilter  = 'alle';
+let curSize    = 'klein';
+let saveTimer  = null;
+let pollTimer  = null;
+let pendingChg = null; // { name, sib, val } – für Retry nach Konflikt
+
+// ── Passwort ─────────────────────────────────────────────────────────────────
+async function hashPw(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitPw();
+});
+
+async function submitPw() {
+  const val = document.getElementById('pw-input').value;
+  const h   = await hashPw(val);
+  if (h === PW_HASH) {
+    sessionStorage.setItem('pw_ok', '1');
+    document.getElementById('pw-overlay').style.display = 'none';
+    initApp();
+  } else {
+    document.getElementById('pw-error').style.display = '';
+    document.getElementById('pw-input').select();
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('pw_ok') === '1') {
+    document.getElementById('pw-overlay').style.display = 'none';
+    initApp();
+  }
+});
+
+async function initApp() {
+  ghToken = new URLSearchParams(location.search).get('t') || '';
+  if (!ghToken) {
+    document.getElementById('no-token').style.display = '';
+    return;
+  }
+  document.getElementById('app').style.display = '';
+  document.getElementById('load-overlay').style.display = 'flex';
+  setLoadMsg('Lade Fotoliste …');
+  try {
+    await loadPhotos();
+    setLoadMsg('Lade Präferenzen …');
+    await loadPrefs();
+    document.getElementById('load-overlay').style.display = 'none';
+    render();
+    startPolling();
+  } catch(e) {
+    document.getElementById('load-overlay').innerHTML =
+      `<div style="color:#e74c3c;text-align:center;padding:20px">
+        Fehler beim Laden:<br><b>${e.message}</b><br><br>
+        <button onclick="location.reload()" style="padding:8px 16px;cursor:pointer">Neu laden</button>
+      </div>`;
+  }
+}
+
+function setLoadMsg(m) { document.getElementById('load-msg').textContent = m; }
+
+// ── GitHub API ───────────────────────────────────────────────────────────────
+function apiHeaders() {
+  return {
+    'Authorization': 'token ' + ghToken,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
+}
+
+function b64decode(b64) {
+  const bin = atob(b64.replace(/\s/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
+async function loadPhotos() {
+  const res = await fetch(API + 'FamilienBilder', { headers: apiHeaders() });
+  if (!res.ok) throw new Error('FamilienBilder nicht gefunden (Status ' + res.status + ')');
+  const files = await res.json();
+  PHOTOS = files
+    .filter(f => f.type === 'file' && /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.name))
+    .map(f => f.name)
+    .sort((a, b) => a.localeCompare(b, 'de'));
+}
+
+async function loadPrefs() {
+  const res = await fetch(API + 'preferences.json', { headers: apiHeaders() });
+  if (res.status === 404) { prefs = {}; prefsSha = ''; return; }
+  if (!res.ok) throw new Error('preferences.json nicht lesbar (Status ' + res.status + ')');
+  const data = await res.json();
+  prefsSha = data.sha;
+  prefs    = JSON.parse(b64decode(data.content));
+}
+
+async function reloadPrefs() {
+  await loadPrefs();
+  render();
+  setSaveStatus('↺ Aktualisiert', 'ss-update', 2000);
+}
+
+// ── Präferenzen speichern ────────────────────────────────────────────────────
+function getPref(name, sib) { return (prefs[name] || {})[sib] || null; }
+
+function applyPref(name, sib, val) {
+  if (!prefs[name]) prefs[name] = {};
+  if (prefs[name][sib] === val || val === null) {
+    delete prefs[name][sib];
+    if (!Object.keys(prefs[name]).length) delete prefs[name];
+  } else {
+    prefs[name][sib] = val;
+  }
+}
+
+function togglePref(idx, sib, val) {
+  const name = PHOTOS[idx];
+  pendingChg  = { name, sib, val };
+  applyPref(name, sib, val);
+  render();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => doSave(), 600);
+}
+
+function nachgeben(idx, sib) { togglePref(idx, sib, null); }
+
+async function doSave(retryCount = 0) {
+  setSaveStatus('Speichert …', 'ss-saving');
+  const body = {
+    message: 'Praeferenzen aktualisiert',
+    content: b64encode(JSON.stringify(prefs, null, 2))
+  };
+  if (prefsSha) body.sha = prefsSha;
+
+  try {
+    const res = await fetch(API + 'preferences.json', {
+      method: 'PUT', headers: apiHeaders(), body: JSON.stringify(body)
+    });
+
+    if ((res.status === 409 || res.status === 422) && retryCount < 2) {
+      // SHA-Konflikt: frisch laden, letzten Change nochmal anwenden, retry
+      await loadPrefs();
+      if (pendingChg) applyPref(pendingChg.name, pendingChg.sib, pendingChg.val);
+      render();
+      await doSave(retryCount + 1);
+      return;
+    }
+
+    if (!res.ok) throw new Error('Status ' + res.status);
+
+    const data = await res.json();
+    prefsSha = data.content.sha;
+    setSaveStatus('✓ Gespeichert', 'ss-ok', 2500);
+    pendingChg = null;
+
+  } catch(e) {
+    setSaveStatus('⚠ Fehler: ' + e.message, 'ss-err');
+  }
+}
+
+// ── Polling (alle 25 s) ──────────────────────────────────────────────────────
+function startPolling() {
+  pollTimer = setInterval(async () => {
+    if (saveTimer) return; // gerade am Speichern
+    const res = await fetch(API + 'preferences.json', { headers: apiHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.sha !== prefsSha) {
+      prefsSha = data.sha;
+      prefs    = JSON.parse(b64decode(data.content));
+      render();
+      setSaveStatus('↺ Neue Daten', 'ss-update', 3000);
+    }
+  }, 25000);
+}
+
+// ── Save-Status-Anzeige ──────────────────────────────────────────────────────
+let statusTimer = null;
+function setSaveStatus(msg, cls, clearAfter) {
+  const el = document.getElementById('save-status');
+  el.textContent  = msg;
+  el.className    = 'save-status ' + (cls || '');
+  clearTimeout(statusTimer);
+  if (clearAfter) statusTimer = setTimeout(() => { el.textContent = ''; el.className = ''; }, clearAfter);
+}
+
+// ── Statuslogik ──────────────────────────────────────────────────────────────
+function wanters(name)  { return SIBLINGS.filter(s => WANTED.has(getPref(name, s))); }
+function isConflict(n)  { return wanters(n).length >= 2; }
+function isVergeben(n)  { return wanters(n).length === 1; }
+function photoStatus(n) { return isConflict(n) ? 'konflikt' : isVergeben(n) ? 'vergeben' : 'frei'; }
+
+function matchesFilter(name) {
+  switch(curFilter) {
+    case 'alle':      return true;
+    case 'konflikte': return isConflict(name);
+    case 'frei':      return !isVergeben(name) && !isConflict(name);
+    default:          return WANTED.has(getPref(name, curFilter));
+  }
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const konfCount = PHOTOS.filter(isConflict).length;
+  const vergCount = PHOTOS.filter(isVergeben).length;
+  const freiCount = PHOTOS.filter(n => !isVergeben(n) && !isConflict(n)).length;
+
+  document.getElementById('st-total').textContent = PHOTOS.length;
+  document.getElementById('st-verg').textContent  = vergCount;
+  document.getElementById('st-konf').textContent  = konfCount;
+  document.getElementById('st-frei').textContent  = freiCount;
+
+  const badge = document.getElementById('konf-badge');
+  badge.textContent    = konfCount;
+  badge.style.display  = konfCount > 0 ? '' : 'none';
+
+  const vis = PHOTOS.map((n,i) => ({n,i})).filter(({n}) => matchesFilter(n));
+  const g   = document.getElementById('gallery');
+  g.className = 'sz-' + curSize;
+
+  if (!PHOTOS.length) { g.innerHTML = '<div class="empty">Keine Fotos gefunden.</div>'; return; }
+  if (!vis.length)    { g.innerHTML = '<div class="empty">Keine Fotos in dieser Ansicht.</div>'; return; }
+
+  if (curFilter === 'konflikte') {
+    g.innerHTML = vis.map(({n,i}) => conflictCard(n,i)).join('');
+  } else if (curFilter === 'alle' && konfCount > 0) {
+    const konfl = vis.filter(({n}) => isConflict(n));
+    const other = vis.filter(({n}) => !isConflict(n));
+    g.innerHTML =
+      (konfl.length ? `<div class="section-label">⚠️ ${konfl.length} Interesse&gt;1 – bitte klären</div>` + konfl.map(({n,i}) => standardCard(n,i)).join('') : '') +
+      (other.length ? `<div class="section-label">Alle weiteren Bilder</div>` + other.map(({n,i}) => standardCard(n,i)).join('') : '');
+  } else {
+    g.innerHTML = vis.map(({n,i}) => standardCard(n,i)).join('');
+  }
+}
+
+// ── Standard-Karte ───────────────────────────────────────────────────────────
+function standardCard(name, idx) {
+  const st  = photoStatus(name);
+  const wts = wanters(name);
+  const statusHtml =
+    st === 'konflikt'
+      ? `<div class="status-bar status-konflikt"><span class="sdot" style="background:#e74c3c"></span>Interesse&gt;1: ${wts.join(' & ')}</div>`
+    : st === 'vergeben'
+      ? `<div class="status-bar status-vergeben"><span class="sdot" style="background:#27ae60"></span>Vergeben an ${wts[0]}</div>`
+      : `<div class="status-bar status-frei"><span class="sdot" style="background:#ccc"></span>Noch frei</div>`;
+
+  const rows = SIBLINGS.map(s => {
+    const cur = getPref(name, s);
+    const btns = PREFS.map(o =>
+      `<button class="pb${cur===o.v?' sel':''}" data-v="${o.v}" title="${o.title}"
+         onclick="togglePref(${idx},'${s}','${o.v}')">${o.icon}</button>`
+    ).join('');
+    return `<div class="prow"><span class="slbl s-${s}">${s}</span>${btns}</div>`;
+  }).join('');
+
+  const stClass = st === 'konflikt' ? ' is-conflict' : st === 'vergeben' ? ' is-vergeben' : '';
+  const short   = name.length > 22 ? name.slice(0,20)+'…' : name;
+
+  return `<div class="card${stClass}">
+    <div class="thumb-wrap" onclick="openModal(${idx})" title="Vergrößern">
+      <img src="FamilienBilder/${encodeURIComponent(name)}" alt="" loading="lazy">
+    </div>
+    ${statusHtml}
+    <div class="cname" title="${escH(name)}">${escH(short)}</div>
+    <div class="prefs">${rows}</div>
+  </div>`;
+}
+
+// ── Konflikt-Karte ────────────────────────────────────────────────────────────
+function conflictCard(name, idx) {
+  const wts  = wanters(name);
+  const rows = wts.map(s => {
+    const clr = SIB_CLR[s];
+    return `<div class="wanter-row" style="--sc:${clr}">
+      <span class="wanter-name">${s}</span>
+      <span class="wanter-pref">${PREF_TITLE[getPref(name,s)] || ''}</span>
+      <button class="nachgeben-btn" onclick="nachgeben(${idx},'${s}')">Ich gebe nach 🤝</button>
+    </div>`;
+  }).join('');
+
+  const allRows = SIBLINGS.map(s => {
+    const cur = getPref(name, s);
+    const btns = PREFS.map(o =>
+      `<button class="pb${cur===o.v?' sel':''}" data-v="${o.v}" title="${o.title}"
+         onclick="togglePref(${idx},'${s}','${o.v}')">${o.icon}</button>`
+    ).join('');
+    return `<div class="prow"><span class="slbl s-${s}">${s}</span>${btns}</div>`;
+  }).join('');
+
+  const short = name.length > 32 ? name.slice(0,30)+'…' : name;
+  return `<div class="card conflict-card is-conflict">
+    <div class="conflict-header">⚠️ &nbsp;Beide wollen dieses Bild – wer gibt nach?</div>
+    <div class="thumb-wrap conflict-thumb" onclick="openModal(${idx})" title="Vergrößern">
+      <img src="FamilienBilder/${encodeURIComponent(name)}" alt="" loading="lazy">
+    </div>
+    <div class="cname" style="padding:5px 12px 2px;font-size:0.78em">${escH(short)}</div>
+    <div class="conflict-wanters">${rows}</div>
+    <details class="conflict-prefs">
+      <summary>Präferenzen anpassen …</summary>
+      <div class="prefs" style="padding-top:6px">${allRows}</div>
+    </details>
+  </div>`;
+}
+
+function escH(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+// ── Filter & Größe ────────────────────────────────────────────────────────────
+function setFilter(f) {
+  curFilter = f;
+  document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
+  const map = { alle:'fb-alle', konflikte:'fb-konfl', RA:'fb-RA', AN:'fb-AN', AM:'fb-AM', IN:'fb-IN', frei:'fb-frei' };
+  document.querySelector('.fb.' + map[f]).classList.add('active');
+  render();
+}
+
+function setSize(s) {
+  curSize = s;
+  document.getElementById('btn-klein').classList.toggle('active',  s==='klein');
+  document.getElementById('btn-mittel').classList.toggle('active', s==='mittel');
+  render();
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(idx) {
+  document.getElementById('mimg').src = 'FamilienBilder/' + encodeURIComponent(PHOTOS[idx]);
+  document.getElementById('mname').textContent = PHOTOS[idx];
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('mimg').src = '';
+}
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
