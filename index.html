@@ -138,6 +138,7 @@ body { font-family: Arial, sans-serif; background: #eef0f3; color: #333; }
 .sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
 .cname { font-size: 0.65em; color: #777; padding: 2px 6px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.size-label { font-size: 0.7em; color: #888; padding: 1px 6px 3px; font-style: italic; }
 .sz-klein  .cname { max-width: 128px; }
 .sz-mittel .cname { max-width: 377px; }
 
@@ -727,11 +728,13 @@ function standardCard(name, idx) {
   const stClass = st === 'konflikt' ? ' is-conflict' : st === 'vergeben' ? ' is-vergeben' : '';
   const short   = name.length > 22 ? name.slice(0,20)+'…' : name;
 
+  const sizeLabel = getSizeLabel(name);
   return `<div class="card${stClass}">
     <div class="thumb-wrap" onclick="openModal(${idx})" title="Vergrößern">
       <img src="FamilienBilder/${encodeURIComponent(name)}" alt="" loading="lazy">
     </div>
     ${statusHtml}
+    ${sizeLabel ? `<div class="size-label">${escH(sizeLabel)}</div>` : ''}
     <div class="cname" title="${escH(name)}">${escH(short)}</div>
     <div class="prefs">${rows}</div>
     ${noteHtml(name, idx)}
@@ -760,12 +763,14 @@ function conflictCard(name, idx) {
   }).join('');
 
   const short = name.length > 32 ? name.slice(0,30)+'…' : name;
+  const sizeLabelC = getSizeLabel(name);
   return `<div class="card conflict-card is-conflict">
     <div class="conflict-header">⚠️ &nbsp;Beide wollen dieses Bild – wer gibt nach?</div>
     <div class="thumb-wrap conflict-thumb" onclick="openModal(${idx})" title="Vergrößern">
       <img src="FamilienBilder/${encodeURIComponent(name)}" alt="" loading="lazy">
     </div>
     <div class="cname" style="padding:5px 12px 2px;font-size:0.78em">${escH(short)}</div>
+    ${sizeLabelC ? `<div class="size-label" style="padding:0 12px 4px">${escH(sizeLabelC)}</div>` : ''}
     <div class="conflict-wanters">${rows}</div>
     <details class="conflict-prefs">
       <summary>Präferenzen anpassen …</summary>
@@ -776,6 +781,13 @@ function conflictCard(name, idx) {
 }
 
 function escH(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function getSizeLabel(name) {
+  // Extrahiert den Teil nach dem Datum-Zeit-Prefix "YYYYMMDD_HHMMSS"
+  const base = name.replace(/\.[^.]+$/, ''); // Erweiterung entfernen
+  const m = base.match(/^\d{8}_\d{6}\s*(.*)/);
+  return m ? m[1].trim() : '';
+}
 
 // ── Filter & Größe ────────────────────────────────────────────────────────────
 function setFilter(f) {
